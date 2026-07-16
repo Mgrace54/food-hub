@@ -1,963 +1,730 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Food Hub</title>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Food Hub</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0f1117;
+      --surf:    #1a1d27;
+      --card:    #21253a;
+      --border:  #2e3350;
+      --accent:  #5b7fff;
+      --green:   #3ecf8e;
+      --yellow:  #f5c842;
+      --red:     #f05252;
+      --text:    #e2e8f0;
+      --muted:   #8a91a8;
+      --radius:  10px;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px; overscroll-behavior: none; }
 
-:root {
-  --green:  #16a34a;
-  --green-l:#dcfce7;
-  --yellow: #d97706;
-  --yellow-l:#fef3c7;
-  --red:    #dc2626;
-  --red-l:  #fee2e2;
-  --blue:   #2563eb;
-  --blue-l: #dbeafe;
-  --gray:   #64748b;
-  --bg:     #f1f5f9;
-  --card:   #ffffff;
-  --border: #e2e8f0;
-  --text:   #0f172a;
-  --sub:    #94a3b8;
-  --radius: 14px;
-  --tab-h:  64px;
-  --head-h: 56px;
-}
+    /* ── App shell ── */
+    #app { display: flex; flex-direction: column; height: 100vh; max-width: 480px; margin: 0 auto; }
+    .topbar { background: var(--surf); border-bottom: 1px solid var(--border);
+      padding: 12px 16px 0; flex-shrink: 0; }
+    .topbar-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .topbar-row h1 { font-size: 1.15rem; font-weight: 700; }
+    .topbar-row h1 span { color: var(--accent); }
+    .meta { font-size: .72rem; color: var(--muted); margin-bottom: 8px; }
+    .tabs { display: flex; }
+    .tab-btn { flex: 1; padding: 8px 4px; background: none; border: none; cursor: pointer;
+      font-size: .8rem; font-weight: 600; color: var(--muted);
+      border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100dvh;
-  overflow-x: hidden;
-}
+    main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .tab-panel { display: none; padding: 14px 14px 80px; }
+    .tab-panel.active { display: block; }
 
-/* ── Header ──────────────────────────────────────────────── */
-header {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: var(--head-h);
-  background: #fff;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px;
-}
-header h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
-header h1 span { color: var(--green); }
+    /* ── Bottom nav ── */
+    .bottom-nav { position: sticky; bottom: 0; background: var(--surf);
+      border-top: 1px solid var(--border); display: flex; flex-shrink: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0); }
+    .bnav-btn { flex: 1; padding: 10px 4px 8px; background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-size: .65rem; font-weight: 600; color: var(--muted); transition: color .15s; }
+    .bnav-btn.active { color: var(--accent); }
+    .bnav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none;
+      stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-#status-pill {
-  font-size: 0.7rem; font-weight: 600;
-  padding: 3px 10px; border-radius: 20px;
-  background: var(--green-l); color: var(--green);
-  display: none;
-}
-#status-pill.err { background: var(--red-l); color: var(--red); }
-#status-pill.loading { background: #f1f5f9; color: var(--gray); }
+    /* ── Common ── */
+    .section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+    .section-gap { margin-top: 22px; }
+    .pill { display: inline-block; font-size: .68rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 99px; }
+    .pill-red    { background: rgba(240,82,82,.15);   color: var(--red); }
+    .pill-yellow { background: rgba(245,200,66,.15);  color: var(--yellow); }
+    .pill-green  { background: rgba(62,207,142,.15);  color: var(--green); }
+    .pill-blue   { background: rgba(91,127,255,.15);  color: var(--accent); }
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: .82rem; font-weight: 600; transition: opacity .15s; }
+    .btn:active { opacity: .75; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-sm { padding: 5px 12px; font-size: .75rem; }
+    .btn-warn { background: rgba(245,200,66,.15); color: var(--yellow); border: 1px solid rgba(245,200,66,.3); }
+    .spinner { border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; width: 18px; height: 18px; animation: spin .7s linear infinite;
+      display: inline-block; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    input, textarea { background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: .85rem;
+      font-family: inherit; width: 100%; }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
-#btn-refresh {
-  background: none; border: none; cursor: pointer;
-  font-size: 1.1rem; color: var(--gray);
-  padding: 8px; border-radius: 50%;
-  transition: background 0.15s;
-}
-#btn-refresh:hover { background: var(--bg); }
-#btn-refresh.spinning { animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Shop cards ── */
+    .sort-bar { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
+    .sort-chip { flex-shrink: 0; padding: 4px 10px; border-radius: 99px; font-size: .72rem;
+      font-weight: 600; border: 1px solid var(--border); color: var(--muted);
+      background: var(--surf); cursor: pointer; user-select: none; }
+    .sort-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(91,127,255,.1); }
+    .shop-card { background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+    .shop-card.urgent { border-color: rgba(240,82,82,.5); }
+    .shop-card.soon   { border-color: rgba(245,200,66,.4); }
+    .shop-row1 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .shop-name { font-size: .92rem; font-weight: 600; }
+    .shop-meta-row { display: flex; gap: 14px; margin-bottom: 8px; }
+    .shop-meta { font-size: .75rem; color: var(--muted); }
+    .shop-meta strong { color: var(--text); }
+    .intent-row { display: flex; gap: 6px; align-items: flex-start; }
+    .intent-row input { font-size: .78rem; padding: 6px 8px; }
+    .intent-row .submit-btn { flex-shrink: 0; padding: 6px 10px; font-size: .72rem;
+      font-weight: 600; border: none; border-radius: 6px; background: var(--accent);
+      color: #fff; cursor: pointer; white-space: nowrap; }
+    .intent-parsed { font-size: .75rem; color: var(--green); margin-top: 5px; padding: 5px 8px;
+      background: rgba(62,207,142,.08); border-radius: 6px; border-left: 2px solid var(--green); }
+    .scan-link { display: flex; align-items: center; gap: 5px; font-size: .72rem;
+      color: var(--accent); margin-top: 6px; cursor: pointer; width: fit-content; }
 
-/* ── Main scroll area ─────────────────────────────────────── */
-main {
-  padding-top: calc(var(--head-h) + 12px);
-  padding-bottom: calc(var(--tab-h) + 16px);
-  padding-left: 12px; padding-right: 12px;
-  min-height: 100dvh;
-}
+    /* dinner strip inside shop */
+    .dinner-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+    .dinner-chip { flex-shrink: 0; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); font-size: .78rem; font-weight: 600; cursor: pointer; }
+    .dinner-chip .dname { color: var(--text); }
+    .dinner-chip .dstatus { font-size: .65rem; margin-top: 2px; }
 
-.tab-content { display: none; }
-.tab-content.active { display: block; }
+    /* ── Stock table ── */
+    .stock-search { margin-bottom: 10px; }
+    .hitl-banner { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      background: rgba(245,200,66,.1); border: 1px solid rgba(245,200,66,.3);
+      border-radius: var(--radius); margin-bottom: 12px; cursor: pointer; }
+    .hitl-banner span { flex: 1; font-size: .82rem; color: var(--yellow); }
+    .stock-row { display: flex; align-items: center; gap: 8px; padding: 9px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.04); font-size: .82rem; }
+    .stock-row:last-child { border-bottom: none; }
+    .stock-name { flex: 1; color: var(--text); }
+    .stock-bar-wrap { width: 44px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+    .stock-bar { height: 100%; border-radius: 2px; }
+    .stock-amt { min-width: 48px; text-align: right; color: var(--muted); font-size: .75rem; }
+    .stock-loc { min-width: 58px; text-align: right; color: var(--muted); font-size: .68rem; }
+    .stock-price { min-width: 38px; text-align: right; color: var(--muted); font-size: .73rem; }
+    .sort-header { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
 
-/* ── Bottom tab bar ───────────────────────────────────────── */
-nav {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  height: var(--tab-h);
-  background: #fff;
-  border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  z-index: 100;
-}
-nav button {
-  background: none; border: none; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px;
-  font-size: 0.65rem; font-weight: 600;
-  color: var(--sub);
-  transition: color 0.15s;
-}
-nav button .icon { font-size: 1.4rem; line-height: 1; }
-nav button.active { color: var(--green); }
+    /* ── HITL modal ── */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none;
+      align-items: flex-end; justify-content: center; z-index: 50; }
+    .modal-bg.open { display: flex; }
+    .modal-sheet { background: var(--surf); border-radius: 18px 18px 0 0;
+      padding: 20px 16px 32px; width: 100%; max-width: 480px; max-height: 80vh;
+      overflow-y: auto; }
+    .modal-handle { width: 36px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: 0 auto 16px; }
+    .modal-sheet h2 { font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+    .hitl-card { background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+    .hitl-q { font-size: .85rem; color: var(--text); margin-bottom: 8px; line-height: 1.5; }
+    .hitl-issue { font-size: .7rem; color: var(--yellow); margin-bottom: 6px; }
+    .hitl-input-row { display: flex; gap: 6px; }
+    .hitl-input-row input { font-size: .8rem; padding: 6px 8px; }
+    .hitl-input-row .submit-btn { flex-shrink: 0; padding: 6px 10px; font-size: .72rem;
+      font-weight: 600; border: none; border-radius: 6px; background: var(--accent);
+      color: #fff; cursor: pointer; }
+    .hitl-answered { font-size: .75rem; color: var(--green); margin-top: 5px; }
 
-/* ── Cards ────────────────────────────────────────────────── */
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.section-label {
-  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--sub);
-  margin: 20px 0 10px;
-}
+    /* ── Scanner overlay ── */
+    .scan-overlay { position: fixed; inset: 0; background: #000; display: none;
+      flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+    .scan-overlay.open { display: flex; }
+    #scan-video { width: 100%; max-width: 480px; }
+    .scan-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,.15);
+      border: none; color: #fff; font-size: 1.2rem; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+    .scan-label { color: #fff; margin-top: 16px; font-size: .85rem; opacity: .7; }
 
-/* ── Meal grid ────────────────────────────────────────────── */
-.meal-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  margin-bottom: 14px;
-}
-.meal-card {
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 12px;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  position: relative;
-  user-select: none;
-}
-.meal-card.selected {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
-}
-.meal-card .meal-emoji { font-size: 1.5rem; line-height: 1; margin-bottom: 6px; }
-.meal-card .meal-name  { font-size: 0.82rem; font-weight: 700; }
-.meal-card .meal-badge {
-  font-size: 0.65rem; font-weight: 700;
-  padding: 2px 7px; border-radius: 20px;
-  display: inline-block; margin-top: 6px;
-}
-.badge-ready  { background: var(--green-l);  color: var(--green); }
-.badge-almost { background: var(--yellow-l); color: var(--yellow); }
-.badge-short  { background: var(--red-l);    color: var(--red); }
-.badge-unknown{ background: #f1f5f9;         color: var(--gray); }
-
-/* ── Ingredient list ──────────────────────────────────────── */
-.ing-list { margin-top: 8px; }
-.ing-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; border-bottom: 1px solid #f8fafc;
-  font-size: 0.82rem;
-}
-.ing-row:last-child { border-bottom: none; }
-.ing-status { font-size: 0.95rem; flex-shrink: 0; }
-.ing-label  { flex: 1; }
-.ing-amount { font-size: 0.72rem; color: var(--sub); }
-
-/* ── Primary button ───────────────────────────────────────── */
-.btn-primary {
-  display: block; width: 100%;
-  background: var(--green); color: #fff;
-  border: none; border-radius: 10px;
-  padding: 14px; font-size: 0.9rem; font-weight: 700;
-  cursor: pointer; text-align: center;
-  transition: opacity 0.15s;
-  margin-bottom: 12px;
-}
-.btn-primary:disabled { opacity: 0.4; cursor: default; }
-.btn-primary:not(:disabled):hover { opacity: 0.9; }
-
-/* ── Portion buttons (What's Left) ───────────────────────── */
-.portion-row {
-  display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
-}
-.portion-btn {
-  flex: 1; min-width: 48px;
-  background: #f1f5f9; border: 2px solid transparent;
-  border-radius: 8px; padding: 8px 4px;
-  font-size: 0.72rem; font-weight: 700;
-  cursor: pointer; text-align: center;
-  transition: all 0.15s;
-  color: var(--text);
-}
-.portion-btn:hover { background: var(--green-l); color: var(--green); }
-.portion-btn.active {
-  background: var(--green); color: #fff; border-color: var(--green);
-}
-.portion-btn.gone-active {
-  background: var(--red); color: #fff; border-color: var(--red);
-}
-.batch-item { margin-bottom: 4px; }
-.batch-item .item-header {
-  display: flex; justify-content: space-between; align-items: baseline;
-}
-.batch-item .item-name { font-weight: 700; font-size: 0.9rem; }
-.batch-item .item-current {
-  font-size: 0.75rem; color: var(--sub);
-}
-.batch-item .item-untracked {
-  font-size: 0.75rem; color: var(--yellow); margin-top: 4px;
-}
-.save-flash {
-  font-size: 0.72rem; color: var(--green); font-weight: 600;
-  margin-top: 4px; min-height: 18px;
-}
-
-/* ── Fridge check cards ───────────────────────────────────── */
-.fridge-card {
-  display: flex; align-items: center; gap: 12px;
-  background: var(--card);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 12px 14px;
-  margin-bottom: 8px;
-}
-.fridge-card .fc-name { font-weight: 600; font-size: 0.85rem; flex: 1; }
-.fridge-card .fc-amount { font-size: 0.72rem; color: var(--sub); }
-.fridge-actions { display: flex; gap: 6px; }
-.fc-btn {
-  border: none; border-radius: 8px; padding: 6px 10px;
-  font-size: 0.72rem; font-weight: 700; cursor: pointer;
-  transition: opacity 0.15s;
-}
-.fc-btn:hover { opacity: 0.8; }
-.fc-good { background: var(--green-l); color: var(--green); }
-.fc-low  { background: var(--yellow-l); color: var(--yellow); }
-.fc-gone { background: var(--red-l); color: var(--red); }
-.fc-done { opacity: 0.4; pointer-events: none; }
-
-/* ── Shopping list ────────────────────────────────────────── */
-.shop-section-header {
-  font-size: 0.75rem; font-weight: 700; color: var(--gray);
-  padding: 8px 0 4px; border-bottom: 2px solid var(--border);
-  margin-bottom: 4px;
-}
-.shop-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 8px 4px; border-bottom: 1px solid #f8fafc;
-  cursor: pointer; user-select: none;
-}
-.shop-item.checked .shop-name { text-decoration: line-through; color: var(--sub); }
-.shop-check {
-  width: 20px; height: 20px; flex-shrink: 0;
-  border: 2px solid var(--border); border-radius: 5px;
-  margin-top: 1px; transition: all 0.15s;
-  display: flex; align-items: center; justify-content: center;
-}
-.shop-item.checked .shop-check {
-  background: var(--green); border-color: var(--green);
-  color: #fff; font-size: 0.8rem;
-}
-.shop-name { font-size: 0.85rem; font-weight: 600; }
-.shop-meals { font-size: 0.7rem; color: var(--sub); }
-.empty-state {
-  text-align: center; padding: 40px 20px;
-  color: var(--sub); font-size: 0.9rem;
-}
-.empty-state .big { font-size: 2rem; margin-bottom: 8px; }
-
-/* ── Utility ──────────────────────────────────────────────── */
-.row-between { display: flex; justify-content: space-between; align-items: center; }
-.text-sm   { font-size: 0.8rem; }
-.text-sub  { color: var(--sub); }
-.mt-4 { margin-top: 4px; }
-.mt-8 { margin-top: 8px; }
-</style>
+    /* ── Trends ── */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; }
+    .kpi-val { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+    .kpi-lbl { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+    .kpi-sub { font-size: .7rem; color: var(--muted); margin-top: 1px; }
+    .trend-row { display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .83rem; }
+    .trend-row:last-child { border-bottom: none; }
+    .trend-name { color: var(--text); flex: 1; }
+    .trend-val { color: var(--muted); font-size: .78rem; text-align: right; }
+    .chart-wrap { display: flex; align-items: flex-end; gap: 5px; height: 90px;
+      margin-bottom: 6px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .bar { width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); min-height: 3px; }
+    .bar-lbl { font-size: .6rem; color: var(--muted); }
+    .bar-amt { font-size: .65rem; color: var(--text); }
+  </style>
 </head>
 <body>
+<div id="app">
 
-<header>
-  <h1>🥘 Food<span>Hub</span></h1>
-  <div style="display:flex;align-items:center;gap:8px;">
-    <span id="status-pill"></span>
-    <button id="btn-refresh" title="Refresh">↺</button>
-  </div>
-</header>
-
-<main>
-  <!-- ── TAB: THIS WEEK ──────────────────────────────────── -->
-  <div id="tab-thisWeek" class="tab-content active">
-    <p class="text-sm text-sub" style="margin-bottom:12px;">
-      Tap to pick this week's dinners — shopping list builds from your picks.
-    </p>
-    <div id="meal-grid" class="meal-grid"></div>
-    <button id="btn-build-list" class="btn-primary" disabled>Select meals to build shopping list →</button>
-    <div id="meal-detail"></div>
-  </div>
-
-  <!-- ── TAB: CHECK-IN ──────────────────────────────────── -->
-  <div id="tab-checkIn" class="tab-content">
-    <div class="section-label">🍖 What's Left?</div>
-    <p class="text-sm text-sub" style="margin-bottom:12px;">
-      Update how much of each batch-cooked item remains. Saves directly to Grocy.
-    </p>
-    <div id="batch-cook-list"></div>
-
-    <div class="section-label">🧊 Fridge Check</div>
-    <p class="text-sm text-sub" style="margin-bottom:12px;">
-      Confirm perishables are still good. "Low" removes half; "Gone" zeros it out.
-    </p>
-    <div id="fridge-check-list"></div>
-  </div>
-
-  <!-- ── TAB: SHOPPING LIST ─────────────────────────────── -->
-  <div id="tab-shopping" class="tab-content">
-    <div id="shopping-header" class="row-between" style="margin-bottom:12px;">
-      <span class="text-sm text-sub" id="shop-subtitle">Tap meals on "This Week" to build your list</span>
-      <button id="btn-copy" style="background:none;border:1px solid var(--border);
-        border-radius:8px;padding:6px 12px;font-size:0.75rem;font-weight:600;
-        cursor:pointer;color:var(--gray);">📋 Copy</button>
+  <div class="topbar">
+    <div class="topbar-row">
+      <h1>Food <span>Hub</span></h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="hitl-badge" style="display:none;font-size:.7rem;padding:2px 8px;border-radius:99px;
+          background:rgba(245,200,66,.15);color:var(--yellow);border:1px solid rgba(245,200,66,.3);">
+          ⚠ <span id="hitl-count">0</span> review
+        </span>
+        <button class="btn btn-ghost btn-sm" onclick="loadSnapshot()">↻</button>
+      </div>
     </div>
-    <div id="shop-items"></div>
-    <div style="margin-top:16px;">
-      <button id="btn-clear-checked" style="background:none;border:none;
-        font-size:0.78rem;color:var(--sub);cursor:pointer;text-decoration:underline;">
-        Clear checked items
-      </button>
-    </div>
+    <div class="meta" id="meta">Loading…</div>
   </div>
-</main>
 
-<nav>
-  <button class="active" data-tab="thisWeek">
-    <span class="icon">🍽️</span>This Week
-  </button>
-  <button data-tab="checkIn">
-    <span class="icon">📋</span>Check-In
-  </button>
-  <button data-tab="shopping">
-    <span class="icon">🛒</span>Shopping
-  </button>
-</nav>
+  <main>
+    <!-- ══════════════════ SHOP ══════════════════ -->
+    <div class="tab-panel active" id="tab-shop">
+
+      <div class="section-label" style="margin-bottom:10px;">Dinners this week</div>
+      <div class="dinner-strip" id="dinner-strip">
+        <div style="color:var(--muted);font-size:.8rem;">Loading…</div>
+      </div>
+
+      <div class="section-gap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="section-label" style="margin-bottom:0;">Need to buy</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="copyShopList()">📋 Copy</button>
+          </div>
+        </div>
+        <div class="sort-bar">
+          <div class="sort-chip active" data-sort="urgency" onclick="sortShop(this)">↑ Urgency</div>
+          <div class="sort-chip" data-sort="name"    onclick="sortShop(this)">A–Z</div>
+          <div class="sort-chip" data-sort="price"   onclick="sortShop(this)">$ Price</div>
+          <div class="sort-chip" data-sort="date"    onclick="sortShop(this)">📅 Date</div>
+        </div>
+        <div id="shop-list">
+          <div style="color:var(--muted);padding:20px;text-align:center;font-size:.85rem;">
+            <span class="spinner"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════ STOCK ══════════════════ -->
+    <div class="tab-panel" id="tab-stock">
+      <input class="stock-search" type="search" id="stock-search"
+        placeholder="Search products…" oninput="filterStock()" />
+
+      <div class="hitl-banner" id="hitl-banner" style="display:none;" onclick="openHITL()">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--yellow);flex-shrink:0;">
+          <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        <span id="hitl-banner-text">Items need your review</span>
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:var(--muted);">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      </div>
+
+      <div class="sort-header">
+        <div class="sort-chip active" data-ssort="name"   onclick="sortStock(this)">Name</div>
+        <div class="sort-chip" data-ssort="amount"        onclick="sortStock(this)">Amount</div>
+        <div class="sort-chip" data-ssort="days"          onclick="sortStock(this)">Days left</div>
+        <div class="sort-chip" data-ssort="price"         onclick="sortStock(this)">Cost</div>
+        <div class="sort-chip" data-ssort="date"          onclick="sortStock(this)">Purchased</div>
+        <div class="sort-chip" data-ssort="location"      onclick="sortStock(this)">Location</div>
+      </div>
+
+      <div id="stock-list" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);">
+        <div style="color:var(--muted);padding:20px;text-align:center;"><span class="spinner"></span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ TRENDS ══════════════════ -->
+    <div class="tab-panel" id="tab-trends">
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card" style="grid-column:1/-1;text-align:center;padding:20px;">
+          <span class="spinner"></span>
+        </div>
+      </div>
+
+      <div class="section-label">Monthly spend</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:18px;">
+        <div class="chart-wrap" id="spend-chart"></div>
+        <div style="display:flex;gap:5px;" id="spend-labels"></div>
+      </div>
+
+      <div class="section-label">Most frequent buys</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:18px;" id="freq-list"></div>
+
+      <div class="section-label">Waste watch</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:18px;" id="waste-list"></div>
+
+      <div class="section-label">Impulse events</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);" id="impulse-list"></div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="bnav-btn active" onclick="switchTab('shop', this)">
+      <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
+      Shop
+    </button>
+    <button class="bnav-btn" onclick="switchTab('stock', this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Stock
+    </button>
+    <button class="bnav-btn" onclick="switchTab('trends', this)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Trends
+    </button>
+  </nav>
+</div>
+
+<!-- ══════════════════ HITL SHEET ══════════════════ -->
+<div class="modal-bg" id="hitl-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2>Review Queue</h2>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">
+      Answer each question — Claude interprets your reply and queues a stock update.
+    </p>
+    <div id="hitl-cards"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;" onclick="closeHITL()">Done</button>
+  </div>
+</div>
+
+<!-- ══════════════════ SCANNER ══════════════════ -->
+<div class="scan-overlay" id="scan-overlay">
+  <video id="scan-video" autoplay playsinline muted></video>
+  <button class="scan-close" onclick="stopScanner()">✕ Close</button>
+  <div class="scan-label" id="scan-label">Point at a barcode</div>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// CONFIG — mirrors meals.py; update both when adding meals
-// ═══════════════════════════════════════════════════════════
-const MEALS = [
-  {
-    id: 'tacos', name: 'Tacos', emoji: '🌮',
-    ingredients: [
-      { label: 'Ground Beef',     hints: ['ground beef','lean ground beef','93 lean ground beef'] },
-      { label: 'Shredded Cheese', hints: ['shredded cheese','shredded mexican cheese','mexican blend cheese','cheddar cheese'] },
-      { label: 'Corn Tortillas',  hints: ['corn tortilla','white corn tortilla','mission corn tortilla','guerrero corn tortilla'] },
-    ],
-  },
-  {
-    id: 'enchiladas', name: 'Enchiladas', emoji: '🫔',
-    ingredients: [
-      { label: 'Beef or Chicken', hints: ['ground beef','lean ground beef','chicken breast','chicken thighs','boneless chicken breast'] },
-      { label: 'Corn Tortillas',  hints: ['corn tortilla','white corn tortilla','mission corn tortilla'] },
-      { label: 'Enchilada Sauce', hints: ['enchilada sauce','old el paso enchilada sauce','red enchilada sauce'] },
-      { label: 'Shredded Cheese', hints: ['shredded cheese','shredded mexican cheese','mexican blend cheese','cheddar cheese'] },
-    ],
-  },
-  {
-    id: 'stroganoff', name: 'Stroganoff', emoji: '🍝',
-    ingredients: [
-      { label: 'Ground Beef',    hints: ['ground beef','lean ground beef','85 lean ground beef'] },
-      { label: 'GF Stroganoff', hints: ['gluten free stroganoff','gf stroganoff','hamburger helper stroganoff','stroganoff mix','stroganoff'] },
-      { label: 'Milk',          hints: ['whole milk','milk','2% milk','organic whole milk','vitamin d milk','a2 milk','fairlife milk'] },
-    ],
-  },
-  {
-    id: 'blt', name: 'BLT', emoji: '🥪',
-    ingredients: [
-      { label: 'Bacon',   hints: ['bacon','thick cut bacon','kirkland signature bacon','applegate bacon','uncured bacon'] },
-      { label: 'Lettuce', hints: ['romaine lettuce','iceberg lettuce','lettuce','butter lettuce','hearts of romaine'] },
-      { label: 'Tomato',  hints: ['tomato','roma tomato','beefsteak tomato','vine ripened tomato'] },
-      { label: 'Mayo',    hints: ['mayonnaise','mayo','hellmanns mayonnaise','best foods mayo','avocado oil mayo'] },
-      { label: 'Bread',   hints: ['bread','white bread','sandwich bread','organic bread','gluten free bread','sourdough bread'] },
-    ],
-  },
-  {
-    id: 'nuggets', name: 'Nuggets / Tenders', emoji: '🍗',
-    ingredients: [
-      { label: 'Chicken Nuggets or Tenders', hints: ['chicken nugget','chicken tender','chicken tenders','tyson chicken','kirkland chicken strip','dinosaur nugget','dino nugget'] },
-    ],
-  },
-  {
-    id: 'hamburgers', name: 'Hamburgers', emoji: '🍔',
-    ingredients: [
-      { label: 'Angus Patties',     hints: ['angus beef patty','angus patty','hamburger patty','beef burger patty','kirkland angus','great value angus','frozen burger patty'] },
-      { label: 'Burger Condiment',  hints: ['burger sauce','special sauce','ketchup','mustard','thousand island dressing'] },
-      { label: 'Pickles',           hints: ['pickle','dill pickle','sliced pickle','vlasic pickle','bread and butter pickle'] },
-      { label: 'Cheese',            hints: ['american cheese','cheddar cheese','sliced cheese','kraft singles'] },
-    ],
-  },
-];
+// ── State ──────────────────────────────────────────────────────────────────
+let SNAP = null;
+let SHOP_SORT = "urgency";
+let STOCK_SORT = "name";
+let STOCK_FILTER = "";
+let SCAN_TARGET = null;   // input element to fill on scan
 
-// Large cooked batch items — each needs a matching product in Grocy.
-// Run: python main.py seed-batch-cook  (to create these products in Grocy)
-const BATCH_COOK = [
-  {
-    id: 'chuck',    name: 'Smoked Chuck Roast',    emoji: '🥩',
-    hints: ['smoked chuck roast','chuck roast cooked','pulled beef','shredded beef'],
-    fullBatch: 8,  unit: 'servings',
-  },
-  {
-    id: 'thighs',  name: 'Cooked Chicken Thighs',  emoji: '🍗',
-    hints: ['cooked chicken thigh','chicken thighs cooked','baked chicken thigh','chicken thigh cooked'],
-    fullBatch: 8,  unit: 'thighs',
-  },
-  {
-    id: 'bacon_c', name: 'Cooked Bacon',            emoji: '🥓',
-    hints: ['cooked bacon','bacon cooked','bacon strips cooked'],
-    fullBatch: 12, unit: 'strips',
-  },
-];
-
-// Store sections for shopping list grouping
-const STORE_SECTIONS = [
-  { label: '🥩 Meat & Seafood',  groups: ['meat','seafood'] },
-  { label: '🥬 Produce',         groups: ['produce'] },
-  { label: '🧀 Dairy',           groups: ['dairy','beverages'] },
-  { label: '🧊 Frozen',          groups: ['frozen'] },
-  { label: '🥫 Pantry',          groups: ['pantry','snacks','bakery','grains','candy','prepared foods'] },
-  { label: '🧴 Personal & Home', groups: ['personal care','cleaning','other','house supplies','baby supplies'] },
-  { label: '❓ Other',           groups: [] },
-];
-
-// Perishable product group names (for fridge check filtering)
-const PERISHABLE_GROUPS = new Set(['dairy','produce','meat','seafood','bakery','prepared foods']);
-
-// ═══════════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════════
-const state = {
-  products: {},       // id → product
-  productGroups: {},  // id → name
-  locations: {},      // id → name
-  stock: {},          // product_id → float amount
-  selectedMeals: new Set(),
-  shopChecked: new Set(),
-};
-
-// ═══════════════════════════════════════════════════════════
-// API HELPER
-// ═══════════════════════════════════════════════════════════
-async function api(path, method = 'GET', body = null) {
-  const url = `/api/grocy?path=${encodeURIComponent(path)}`;
-  const opts = { method };
-  if (body !== null && method !== 'GET') {
-    opts.headers = { 'Content-Type': 'application/json' };
-    opts.body = JSON.stringify(body);
-  }
-  const r = await fetch(url, opts);
-  if (!r.ok) {
-    const txt = await r.text().catch(() => '');
-    throw new Error(`Grocy ${r.status}: ${txt}`);
-  }
-  const txt = await r.text();
-  return txt ? JSON.parse(txt) : null;
+// ── Tab routing ────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
 }
 
-// ═══════════════════════════════════════════════════════════
-// DATA LOADING
-// ═══════════════════════════════════════════════════════════
-async function loadData() {
-  setStatus('loading', 'Loading…');
-  document.getElementById('btn-refresh').classList.add('spinning');
-
-  const [products, groups, locations, stock] = await Promise.all([
-    api('/objects/products'),
-    api('/objects/product_groups'),
-    api('/objects/locations'),
-    api('/stock'),
-  ]);
-
-  state.products = Object.fromEntries((products || []).map(p => [p.id, p]));
-  state.productGroups = Object.fromEntries((groups || []).map(g => [g.id, g.name.toLowerCase()]));
-  state.locations = Object.fromEntries((locations || []).map(l => [l.id, l.name]));
-  state.stock = Object.fromEntries((stock || []).map(s => [s.product_id, parseFloat(s.amount || 0)]));
-
-  document.getElementById('btn-refresh').classList.remove('spinning');
-  setStatus('ok', `Updated ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`);
+// ── Load ───────────────────────────────────────────────────────────────────
+async function loadSnapshot() {
+  document.getElementById('meta').textContent = 'Loading…';
+  try {
+    const r = await fetch('/api/snapshot');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    SNAP = await r.json();
+    renderAll();
+  } catch (e) {
+    document.getElementById('meta').textContent = 'Could not load — run pipeline first. (' + e.message + ')';
+  }
 }
 
-// ═══════════════════════════════════════════════════════════
-// PRODUCT MATCHING  (JS version of matcher.py resolve())
-// ═══════════════════════════════════════════════════════════
-function findByHints(hints) {
-  // Pass 1: stocked product matching any hint
-  for (const hint of hints) {
-    const h = hint.toLowerCase();
-    for (const p of Object.values(state.products)) {
-      if (nameMatches(p.name, h) && (state.stock[p.id] || 0) > 0) {
-        return { product: p, amount: state.stock[p.id], status: 'stocked' };
-      }
+function renderAll() {
+  if (!SNAP) return;
+  const ts  = SNAP.generated_at ? new Date(SNAP.generated_at) : null;
+  const age = ts ? Math.round((Date.now() - ts.getTime()) / 3600000) : null;
+  const s   = SNAP.summary || {};
+  document.getElementById('meta').textContent =
+    (ts ? ts.toLocaleString() : '') +
+    (age !== null ? ` (${age}h ago)` : '') +
+    ` · ${s.in_stock_count || 0} in stock · ${s.dinners_ready || 0}/6 dinners`;
+
+  const hc = s.hitl_count || 0;
+  document.getElementById('hitl-badge').style.display = hc > 0 ? '' : 'none';
+  document.getElementById('hitl-count').textContent = hc;
+  document.getElementById('hitl-banner').style.display = hc > 0 ? '' : 'none';
+  document.getElementById('hitl-banner-text').textContent = `${hc} item${hc !== 1 ? 's' : ''} need your review`;
+
+  renderDinners();
+  renderShop();
+  renderStock();
+  renderTrends();
+  renderHITL();
+}
+
+// ── Dinners strip ──────────────────────────────────────────────────────────
+function renderDinners() {
+  const meals = SNAP.meal_status || [];
+  const el = document.getElementById('dinner-strip');
+  if (!meals.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;">No meals configured.</div>'; return; }
+  el.innerHTML = meals.map(m => {
+    const col = m.status === 'ready' ? 'var(--green)' : m.status === 'almost' ? 'var(--yellow)' : 'var(--red)';
+    const label = m.status === 'ready' ? '✓' : m.status === 'almost' ? '⚠' : `✗ ${m.missing_count}`;
+    return `<div class="dinner-chip" style="border-color:${col}20;">
+      <div class="dname">${esc(m.name)}</div>
+      <div class="dstatus" style="color:${col};">${label}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Shop list ──────────────────────────────────────────────────────────────
+function sortShop(chip) {
+  document.querySelectorAll('#tab-shop .sort-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  SHOP_SORT = chip.dataset.sort;
+  renderShop();
+}
+
+function renderShop() {
+  const items = [...(SNAP.shop_list || [])];
+  if (!items.length) {
+    document.getElementById('shop-list').innerHTML =
+      '<div style="color:var(--muted);padding:20px;text-align:center;">Nothing on the list 🎉</div>';
+    return;
+  }
+
+  items.sort((a, b) => {
+    if (SHOP_SORT === 'name')    return a.name.localeCompare(b.name);
+    if (SHOP_SORT === 'price')   return (b.avg_price || 0) - (a.avg_price || 0);
+    if (SHOP_SORT === 'date')    return (b.last_purchased || '').localeCompare(a.last_purchased || '');
+    return a.urgency - b.urgency;  // default: urgency
+  });
+
+  document.getElementById('shop-list').innerHTML = items.map((item, i) => {
+    const dr = item.days_remaining;
+    const urgClass = (item.amount <= 0 || (dr !== null && dr <= 3))
+      ? 'urgent' : (dr !== null && dr <= 10) ? 'soon' : '';
+    const badge = item.amount <= 0
+      ? '<span class="pill pill-red">out</span>'
+      : dr !== null
+        ? `<span class="pill ${dr <= 3 ? 'pill-red' : 'pill-yellow'}">${dr}d left</span>`
+        : '';
+    const price = item.avg_price ? `<span class="shop-meta"><strong>$${item.avg_price.toFixed(2)}</strong> avg</span>` : '';
+    const repl  = item.replenish_qty
+      ? `<span class="shop-meta"><strong>${item.replenish_qty}</strong> to buy</span>` : '';
+    const loc   = item.location ? `<span class="shop-meta">${esc(item.location)}</span>` : '';
+    return `<div class="shop-card ${urgClass}" id="sc-${i}">
+      <div class="shop-row1">
+        <span class="shop-name">${esc(item.name)}</span>
+        ${badge}
+      </div>
+      <div class="shop-meta-row">${price}${repl}${loc}</div>
+      <div class="intent-row">
+        <input type="text" id="intent-${i}" placeholder="What's this for?" />
+        <button class="submit-btn" onclick="submitIntent(${i},'${esc(item.name)}')">→</button>
+      </div>
+      <div id="intent-result-${i}" style="display:none;" class="intent-parsed"></div>
+      <div class="scan-link" onclick="openScanner('intent-${i}')">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;">
+          <path d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m10-16h-4M21 15v4a2 2 0 01-2 2h-4"/>
+          <line x1="7" y1="12" x2="7" y2="12.01"/><line x1="12" y1="8" x2="12" y2="16"/>
+          <line x1="17" y1="12" x2="17" y2="12.01"/>
+        </svg>
+        Scan barcode
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function submitIntent(i, itemName) {
+  const inp = document.getElementById('intent-' + i);
+  const val = inp.value.trim();
+  if (!val) return;
+  const resultEl = document.getElementById('intent-result-' + i);
+  resultEl.textContent = '…';
+  resultEl.style.display = '';
+  try {
+    const r = await fetch('/api/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'purchase_intent', item_name: itemName, intent_text: val }),
+    });
+    const data = await r.json();
+    resultEl.textContent = '✓ ' + (data.purpose || val);
+  } catch (e) {
+    resultEl.textContent = 'Could not interpret — saved as-is.';
+  }
+}
+
+function copyShopList() {
+  const items = SNAP?.shop_list || [];
+  if (!items.length) return;
+  const lines = items.map(i =>
+    `- ${i.name}${i.avg_price ? '  ($' + i.avg_price.toFixed(2) + ')' : ''}${i.replenish_qty ? '  ×' + i.replenish_qty : ''}`
+  );
+  navigator.clipboard.writeText(lines.join('\n')).then(() => alert('Copied!'));
+}
+
+// ── Stock list ─────────────────────────────────────────────────────────────
+function sortStock(chip) {
+  document.querySelectorAll('#tab-stock .sort-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  STOCK_SORT = chip.dataset.ssort;
+  renderStock();
+}
+
+function filterStock() {
+  STOCK_FILTER = document.getElementById('stock-search').value.toLowerCase();
+  renderStock();
+}
+
+function renderStock() {
+  const raw = Object.values(SNAP?.stock || {});
+  let items = STOCK_FILTER
+    ? raw.filter(v => v.name.toLowerCase().includes(STOCK_FILTER))
+    : raw;
+
+  items.sort((a, b) => {
+    if (STOCK_SORT === 'amount')   return (b.amount || 0) - (a.amount || 0);
+    if (STOCK_SORT === 'days')     return (a.days_remaining ?? 9999) - (b.days_remaining ?? 9999);
+    if (STOCK_SORT === 'price')    return (b.avg_price || 0) - (a.avg_price || 0);
+    if (STOCK_SORT === 'date')     return (b.last_purchased || '').localeCompare(a.last_purchased || '');
+    if (STOCK_SORT === 'location') return (a.location || '').localeCompare(b.location || '');
+    return a.name.localeCompare(b.name);
+  });
+
+  // Cap render to avoid hanging on 481 items
+  const display = items.slice(0, 150);
+  const el = document.getElementById('stock-list');
+
+  if (!display.length) {
+    el.innerHTML = '<div style="color:var(--muted);padding:20px;text-align:center;">No items found.</div>';
+    return;
+  }
+
+  el.innerHTML = display.map(v => {
+    const amt  = parseFloat(v.amount) || 0;
+    const dr   = v.days_remaining;
+    const maxAmt = 20;
+    const pct  = Math.min(100, (amt / maxAmt) * 100);
+    const barColor = amt <= 0 ? 'var(--red)' : (dr !== null && dr <= 7) ? 'var(--yellow)' : 'var(--green)';
+    const amtStr = amt === Math.round(amt) ? Math.round(amt) : amt.toFixed(1);
+    return `<div class="stock-row">
+      <span class="stock-name">${esc(v.name)}</span>
+      <div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${barColor};"></div></div>
+      <span class="stock-amt">${amtStr}${dr !== null ? ` · ${dr}d` : ''}</span>
+      <span class="stock-loc">${esc(v.location || '—')}</span>
+      <span class="stock-price">${v.avg_price ? '$' + v.avg_price.toFixed(2) : '—'}</span>
+    </div>`;
+  }).join('') + (items.length > 150
+    ? `<div style="color:var(--muted);font-size:.75rem;padding:10px;text-align:center;">…${items.length - 150} more — use search to filter</div>`
+    : '');
+}
+
+// ── HITL modal ─────────────────────────────────────────────────────────────
+function openHITL()  { document.getElementById('hitl-modal').classList.add('open'); }
+function closeHITL() { document.getElementById('hitl-modal').classList.remove('open'); }
+
+function renderHITL() {
+  const queue = SNAP.hitl_queue || [];
+  const el = document.getElementById('hitl-cards');
+  if (!queue.length) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;">All clear — nothing to review.</div>';
+    return;
+  }
+  el.innerHTML = queue.map((item, i) => {
+    const issueLbl = (item.issues || []).map(s => s.replace(/_/g, ' ')).join(', ');
+    return `<div class="hitl-card">
+      <div class="hitl-issue">${esc(issueLbl)}</div>
+      <div class="hitl-q">${esc(item.question)}</div>
+      <div class="hitl-input-row">
+        <input type="text" id="hitl-inp-${i}" placeholder="Your answer…" />
+        <button class="submit-btn" onclick="submitHITL(${i},'${esc(item.question)}','${esc(item.name)}')">→</button>
+      </div>
+      <div id="hitl-res-${i}" class="hitl-answered" style="display:none;"></div>
+    </div>`;
+  }).join('');
+}
+
+async function submitHITL(i, question, productName) {
+  const inp = document.getElementById('hitl-inp-' + i);
+  const answer = inp.value.trim();
+  if (!answer) return;
+  const res = document.getElementById('hitl-res-' + i);
+  res.textContent = '…'; res.style.display = '';
+  try {
+    const r = await fetch('/api/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'hitl_answer', question, product_name: productName, answer }),
+    });
+    const data = await r.json();
+    if (data.action === 'inventory' && data.product_name) {
+      await queueChanges([{ type: 'inventory', product_name: data.product_name, new_amount: data.new_amount }]);
+      res.textContent = `✓ Queued: ${data.product_name} → ${data.new_amount}`;
+    } else {
+      res.textContent = `✓ Noted: ${data.notes || answer}`;
     }
-  }
-  // Pass 2: product exists but out of stock
-  for (const hint of hints) {
-    const h = hint.toLowerCase();
-    for (const p of Object.values(state.products)) {
-      if (nameMatches(p.name, h)) {
-        return { product: p, amount: 0, status: 'zero_stock' };
-      }
-    }
-  }
-  return { product: null, amount: 0, status: 'not_tracked' };
-}
-
-function nameMatches(productName, hint) {
-  const p = productName.toLowerCase();
-  if (p.includes(hint)) return true;
-  if (hint.includes(p) && p.length >= 4) return true;
-  return false;
-}
-
-// ═══════════════════════════════════════════════════════════
-// MEAL ANALYSIS
-// ═══════════════════════════════════════════════════════════
-function analyzeMeal(meal) {
-  const ingredients = meal.ingredients.map(ing => {
-    const r = findByHints(ing.hints);
-    return { ...ing, ...r };
-  });
-  const missing = ingredients.filter(i => i.status !== 'stocked');
-  const mealStatus = missing.length === 0 ? 'ready' : missing.length === 1 ? 'almost' : 'short';
-  return { ...meal, ingredients, missing, mealStatus };
-}
-
-function analyzedMeals() {
-  return MEALS.map(analyzeMeal);
-}
-
-// ═══════════════════════════════════════════════════════════
-// RENDER: THIS WEEK TAB
-// ═══════════════════════════════════════════════════════════
-function renderThisWeek() {
-  const meals = analyzedMeals();
-  const grid = document.getElementById('meal-grid');
-  grid.innerHTML = '';
-
-  meals.forEach(meal => {
-    const isSelected = state.selectedMeals.has(meal.id);
-    const badgeClass = { ready: 'badge-ready', almost: 'badge-almost', short: 'badge-short' }[meal.mealStatus] || 'badge-unknown';
-    const badgeText  = { ready: '✅ Ready', almost: '⚠️ 1 short', short: `❌ ${meal.missing.length} missing` }[meal.mealStatus] || '?';
-
-    const card = document.createElement('div');
-    card.className = `meal-card ${isSelected ? 'selected' : ''}`;
-    card.dataset.id = meal.id;
-    card.innerHTML = `
-      <div class="meal-emoji">${meal.emoji}</div>
-      <div class="meal-name">${meal.name}</div>
-      <span class="meal-badge ${badgeClass}">${badgeText}</span>
-    `;
-    card.addEventListener('click', () => toggleMeal(meal.id));
-    grid.appendChild(card);
-  });
-
-  updateBuildButton();
-  renderMealDetail(meals);
-}
-
-function toggleMeal(id) {
-  if (state.selectedMeals.has(id)) {
-    state.selectedMeals.delete(id);
-  } else {
-    state.selectedMeals.add(id);
-  }
-  renderThisWeek();
-  renderShopping();
-}
-
-function updateBuildButton() {
-  const btn = document.getElementById('btn-build-list');
-  const n = state.selectedMeals.size;
-  if (n === 0) {
-    btn.textContent = 'Select meals to build shopping list →';
-    btn.disabled = true;
-  } else {
-    btn.textContent = `Build shopping list for ${n} meal${n > 1 ? 's' : ''} →`;
-    btn.disabled = false;
+    inp.disabled = true;
+  } catch (e) {
+    res.textContent = 'Error: ' + e.message;
   }
 }
 
-function renderMealDetail(meals) {
-  const container = document.getElementById('meal-detail');
-  if (state.selectedMeals.size === 0) { container.innerHTML = ''; return; }
+// ── Trends ─────────────────────────────────────────────────────────────────
+function renderTrends() {
+  const t = SNAP.trends || {};
+  const monthly = t.monthly_spend || [];
 
-  let html = '';
-  meals.filter(m => state.selectedMeals.has(m.id)).forEach(meal => {
-    const rows = meal.ingredients.map(ing => {
-      const icon   = ing.status === 'stocked' ? '✅' : ing.status === 'zero_stock' ? '❌' : '❓';
-      const color  = ing.status === 'stocked' ? 'var(--green)' : ing.status === 'zero_stock' ? 'var(--red)' : 'var(--sub)';
-      const detail = ing.status === 'stocked' ? `${ing.amount} in stock` : ing.status === 'zero_stock' ? 'Out of stock' : 'Not in Grocy';
-      return `<div class="ing-row">
-        <span class="ing-status">${icon}</span>
-        <span class="ing-label" style="color:${color}">${ing.label}</span>
-        <span class="ing-amount">${detail}</span>
-      </div>`;
-    }).join('');
-    html += `<div class="card"><div class="row-between" style="margin-bottom:8px;">
-      <strong>${meal.emoji} ${meal.name}</strong>
-    </div><div class="ing-list">${rows}</div></div>`;
-  });
-  container.innerHTML = `<div class="section-label">Selected meals</div>${html}`;
-}
+  // KPIs
+  const avg   = t.avg_monthly_spend || 0;
+  const last  = monthly.length ? monthly[monthly.length - 1].total : 0;
+  const prev  = monthly.length > 1 ? monthly[monthly.length - 2].total : null;
+  const delta = prev && prev > 0 ? ((last - prev) / prev * 100).toFixed(0) : null;
+  const waste = t.est_waste_cost || 0;
+  const imp   = (t.impulse_events || []).reduce((s, e) => s + e.total, 0);
+  const trips = (t.impulse_events || []).length;
 
-// ═══════════════════════════════════════════════════════════
-// RENDER: CHECK-IN TAB
-// ═══════════════════════════════════════════════════════════
-function renderCheckIn() {
-  renderBatchCook();
-  renderFridgeCheck();
-}
-
-function renderBatchCook() {
-  const container = document.getElementById('batch-cook-list');
-  container.innerHTML = '';
-
-  BATCH_COOK.forEach(item => {
-    const { product, amount, status } = findByHints(item.hints);
-    const card = document.createElement('div');
-    card.className = 'card batch-item';
-
-    const currentFrac = status === 'stocked' ? (amount / item.fullBatch) : 0;
-    const activePortion = portionIndex(currentFrac);
-
-    const portions = [
-      { label: 'Full',   frac: 1.0 },
-      { label: '¾',      frac: 0.75 },
-      { label: '½',      frac: 0.5 },
-      { label: '¼',      frac: 0.25 },
-      { label: 'Gone',   frac: 0 },
-    ];
-
-    const headerHtml = `<div class="item-header">
-      <span class="item-name">${item.emoji} ${item.name}</span>
-      <span class="item-current">${status === 'not_tracked' ? 'not tracked' : `${amount} ${item.unit}`}</span>
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-val">$${Math.round(avg)}</div>
+      <div class="kpi-lbl">Avg / month</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val">$${Math.round(last)}</div>
+      <div class="kpi-lbl">Last month</div>
+      <div class="kpi-sub">${delta !== null ? (delta > 0 ? '▲' : '▼') + Math.abs(delta) + '% vs prev' : ''}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val" style="color:${waste > 0 ? 'var(--red)' : 'var(--text)'};">$${Math.round(waste)}</div>
+      <div class="kpi-lbl">Est. waste</div>
+      <div class="kpi-sub">repurchased too soon</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val" style="color:${imp > 0 ? 'var(--yellow)' : 'var(--text)'};">$${Math.round(imp)}</div>
+      <div class="kpi-lbl">Impulse spend</div>
+      <div class="kpi-sub">${trips} over-budget trip${trips !== 1 ? 's' : ''}</div>
     </div>`;
 
-    if (status === 'not_tracked') {
-      card.innerHTML = `${headerHtml}
-        <div class="item-untracked">⚠️ No matching product in Grocy — run <code>python main.py seed-batch-cook</code></div>`;
-    } else {
-      const btnHtml = portions.map((p, i) => {
-        const isActive = i === activePortion;
-        const cls = isActive ? (p.frac === 0 ? 'gone-active' : 'active') : '';
-        return `<button class="portion-btn ${cls}"
-          data-pid="${product.id}" data-qty="${Math.round(p.frac * item.fullBatch)}"
-          data-full="${item.fullBatch}" data-unit="${item.unit}"
-          onclick="updatePortion(this)">${p.label}</button>`;
-      }).join('');
-      card.innerHTML = `${headerHtml}
-        <div class="portion-row">${btnHtml}</div>
-        <div class="save-flash" id="flash-${item.id}"></div>`;
-    }
-    container.appendChild(card);
-  });
-}
-
-function portionIndex(frac) {
-  if (frac >= 0.9) return 0;
-  if (frac >= 0.6) return 1;
-  if (frac >= 0.35) return 2;
-  if (frac > 0) return 3;
-  return 4;
-}
-
-async function updatePortion(btn) {
-  const pid  = btn.dataset.pid;
-  const qty  = parseInt(btn.dataset.qty, 10);
-  const unit = btn.dataset.unit;
-
-  // Optimistic UI — highlight the tapped button
-  const row = btn.closest('.portion-row');
-  row.querySelectorAll('.portion-btn').forEach(b => {
-    b.classList.remove('active','gone-active');
-  });
-  btn.classList.add(qty === 0 ? 'gone-active' : 'active');
-
-  try {
-    await api(`/stock/products/${pid}/inventory`, 'POST', {
-      new_amount: qty,
-      best_before_date: '2999-12-31',
-    });
-    state.stock[pid] = qty;
-    // Flash confirmation
-    const flash = btn.closest('.batch-item').querySelector('.save-flash');
-    if (flash) {
-      flash.textContent = qty === 0 ? 'Marked as gone ✓' : `Updated to ${qty} ${unit} ✓`;
-      setTimeout(() => { flash.textContent = ''; }, 2500);
-    }
-  } catch (err) {
-    showError('Save failed: ' + err.message);
-  }
-}
-
-function renderFridgeCheck() {
-  const container = document.getElementById('fridge-check-list');
-  container.innerHTML = '';
-
-  // Find "Inside Fridge" location id
-  const fridgeId = Object.entries(state.locations)
-    .find(([, name]) => name.toLowerCase().includes('inside fridge'))?.[0];
-
-  if (!fridgeId) {
-    container.innerHTML = '<p class="text-sm text-sub">Could not find "Inside Fridge" location in Grocy.</p>';
-    return;
+  // Bar chart
+  const chartEl = document.getElementById('spend-chart');
+  if (monthly.length) {
+    const max = Math.max(...monthly.map(x => x.total), 1);
+    chartEl.innerHTML = monthly.map(m => {
+      const h = Math.max(4, Math.round((m.total / max) * 82));
+      return `<div class="bar-col">
+        <span class="bar-amt">$${Math.round(m.total)}</span>
+        <div class="bar" style="height:${h}px;"></div>
+      </div>`;
+    }).join('');
+    document.getElementById('spend-labels').innerHTML = monthly.map(m =>
+      `<div style="flex:1;text-align:center;font-size:.6rem;color:var(--muted);">${m.month.slice(5)}</div>`
+    ).join('');
+  } else {
+    chartEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:10px;">No spend data yet.</div>';
   }
 
-  // Products at Inside Fridge, with stock > 0, in a perishable group
-  const perishables = Object.values(state.products).filter(p => {
-    if (String(p.location_id) !== String(fridgeId)) return false;
-    if ((state.stock[p.id] || 0) <= 0) return false;
-    const groupName = state.productGroups[p.product_group_id] || '';
-    return PERISHABLE_GROUPS.has(groupName.toLowerCase());
-  });
+  // Frequent buys
+  const freqEl = document.getElementById('freq-list');
+  freqEl.innerHTML = (t.frequent_buys || []).map(f =>
+    `<div class="trend-row">
+      <span class="trend-name">${esc(f.name)}</span>
+      <span class="trend-val">${f.avg_days ? 'every ' + f.avg_days + 'd' : f.purchases + ' purchases'}${f.avg_price ? ' · $' + f.avg_price.toFixed(2) : ''}</span>
+    </div>`
+  ).join('') || '<div style="color:var(--muted);padding:14px;font-size:.82rem;">Not enough data yet.</div>';
 
-  if (perishables.length === 0) {
-    container.innerHTML = '<p class="text-sm text-sub">No perishables currently tracked in the Inside Fridge.</p>';
-    return;
-  }
-
-  perishables.forEach(p => {
-    const amount = state.stock[p.id] || 0;
-    const card = document.createElement('div');
-    card.className = 'fridge-card';
-    card.id = `fc-${p.id}`;
-    card.innerHTML = `
+  // Waste watch
+  const wasteEl = document.getElementById('waste-list');
+  wasteEl.innerHTML = (t.waste_watch || []).map(w =>
+    `<div class="trend-row">
       <div style="flex:1;">
-        <div class="fc-name">${p.name}</div>
-        <div class="fc-amount">${amount} in stock</div>
+        <div class="trend-name">${esc(w.name)}</div>
+        <div style="font-size:.7rem;color:var(--muted);">${esc(w.note || '')}</div>
       </div>
-      <div class="fridge-actions">
-        <button class="fc-btn fc-good" onclick="fridgeCheck(${p.id}, 'good', this)">✓ Good</button>
-        <button class="fc-btn fc-low"  onclick="fridgeCheck(${p.id}, 'low',  this)">Low</button>
-        <button class="fc-btn fc-gone" onclick="fridgeCheck(${p.id}, 'gone', this)">Gone</button>
-      </div>`;
-    container.appendChild(card);
-  });
+      <span class="pill pill-red">$${(w.est_waste_cost || 0).toFixed(2)}</span>
+    </div>`
+  ).join('') || '<div style="color:var(--muted);padding:14px;font-size:.82rem;">No waste patterns detected 🎉</div>';
+
+  // Impulse events
+  const impEl = document.getElementById('impulse-list');
+  impEl.innerHTML = (t.impulse_events || []).map(e =>
+    `<div class="trend-row">
+      <span class="trend-name">${e.date}</span>
+      <div style="text-align:right;">
+        <div style="font-size:.82rem;color:var(--text);">$${e.total.toFixed(2)}</div>
+        <div style="font-size:.7rem;color:var(--yellow);">+$${e.over_avg.toFixed(2)} over avg</div>
+      </div>
+    </div>`
+  ).join('') || '<div style="color:var(--muted);padding:14px;font-size:.82rem;">No impulse events found.</div>';
 }
 
-async function fridgeCheck(pid, verdict, btn) {
-  const card = btn.closest('.fridge-card');
-  const amount = state.stock[pid] || 0;
+// ── Pending queue ──────────────────────────────────────────────────────────
+async function queueChanges(changes) {
+  const r = await fetch('/api/pending', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(changes),
+  });
+  if (!r.ok) throw new Error('Queue failed');
+  return r.json();
+}
 
+// ── Barcode scanner ────────────────────────────────────────────────────────
+let scanStream = null;
+let scanInterval = null;
+
+async function openScanner(targetInputId) {
+  SCAN_TARGET = document.getElementById(targetInputId);
+  const overlay = document.getElementById('scan-overlay');
+  overlay.classList.add('open');
+  document.getElementById('scan-label').textContent = 'Point at a barcode';
   try {
-    if (verdict === 'good') {
-      // No Grocy write — just dismiss
-    } else if (verdict === 'low') {
-      const newAmt = Math.max(0, Math.floor(amount * 0.5));
-      await api(`/stock/products/${pid}/inventory`, 'POST', {
-        new_amount: newAmt, best_before_date: '2999-12-31',
-      });
-      state.stock[pid] = newAmt;
-    } else if (verdict === 'gone') {
-      await api(`/stock/products/${pid}/inventory`, 'POST', {
-        new_amount: 0, best_before_date: '2999-12-31',
-      });
-      state.stock[pid] = 0;
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('scan-video');
+    video.srcObject = scanStream;
+    await video.play();
+
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+      scanInterval = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            const code = codes[0].rawValue;
+            if (SCAN_TARGET) SCAN_TARGET.value = code;
+            document.getElementById('scan-label').textContent = '✓ Scanned: ' + code;
+            setTimeout(stopScanner, 1200);
+          }
+        } catch {}
+      }, 400);
+    } else {
+      document.getElementById('scan-label').textContent = 'Barcode scanning not supported on this browser — try Chrome on Android';
     }
-    card.classList.add('fc-done');
-    card.style.opacity = '0.4';
-    card.querySelectorAll('.fc-btn').forEach(b => b.disabled = true);
-  } catch (err) {
-    showError('Update failed: ' + err.message);
+  } catch (e) {
+    document.getElementById('scan-label').textContent = 'Camera access denied — check browser permissions';
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-// RENDER: SHOPPING LIST TAB
-// ═══════════════════════════════════════════════════════════
-function buildShoppingItems() {
-  const meals = analyzedMeals();
-  const activeMeals = state.selectedMeals.size > 0
-    ? meals.filter(m => state.selectedMeals.has(m.id))
-    : meals;
-
-  const seen = {};
-  activeMeals.forEach(meal => {
-    meal.ingredients.forEach(ing => {
-      if (ing.status === 'stocked') return;
-      if (!seen[ing.label]) {
-        // Find product group for store-section sorting
-        const product = ing.product;
-        const groupName = product ? (state.productGroups[product.product_group_id] || '') : '';
-        seen[ing.label] = {
-          label: ing.label,
-          status: ing.status,
-          groupName,
-          meals: [],
-        };
-      }
-      if (!seen[ing.label].meals.includes(meal.name)) {
-        seen[ing.label].meals.push(meal.name);
-      }
-    });
-  });
-  return Object.values(seen);
+function stopScanner() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  document.getElementById('scan-overlay').classList.remove('open');
+  SCAN_TARGET = null;
 }
 
-function renderShopping() {
-  const items = buildShoppingItems();
-  const container = document.getElementById('shop-items');
-  const subtitle = document.getElementById('shop-subtitle');
-
-  if (state.selectedMeals.size === 0) {
-    subtitle.textContent = items.length === 0
-      ? 'All meals fully stocked 🎉'
-      : `Showing all ${items.length} missing item${items.length > 1 ? 's' : ''} across every dinner`;
-  } else {
-    const names = [...state.selectedMeals].map(id => MEALS.find(m => m.id === id)?.name).join(', ');
-    subtitle.textContent = `For: ${names}`;
-  }
-
-  if (items.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="big">🎉</div>All stocked up!</div>`;
-    return;
-  }
-
-  // Group by store section
-  const grouped = {};
-  items.forEach(item => {
-    const section = STORE_SECTIONS.find(s =>
-      s.groups.includes(item.groupName.toLowerCase())
-    ) || STORE_SECTIONS[STORE_SECTIONS.length - 1];
-    if (!grouped[section.label]) grouped[section.label] = [];
-    grouped[section.label].push(item);
-  });
-
-  let html = '';
-  // Render in section order
-  STORE_SECTIONS.forEach(section => {
-    const sectionItems = grouped[section.label];
-    if (!sectionItems) return;
-    html += `<div class="shop-section-header">${section.label}</div>`;
-    sectionItems.forEach(item => {
-      const checked = state.shopChecked.has(item.label);
-      const statusNote = item.status === 'zero_stock' ? 'restock' : 'add to Grocy';
-      html += `<div class="shop-item ${checked ? 'checked' : ''}" onclick="toggleShopItem('${item.label.replace(/'/g,"\\'")}', this)">
-        <div class="shop-check">${checked ? '✓' : ''}</div>
-        <div>
-          <div class="shop-name">${item.label}</div>
-          <div class="shop-meals">${item.meals.join(', ')} · <em>${statusNote}</em></div>
-        </div>
-      </div>`;
-    });
-  });
-  container.innerHTML = html;
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function toggleShopItem(label, el) {
-  if (state.shopChecked.has(label)) {
-    state.shopChecked.delete(label);
-    el.classList.remove('checked');
-    el.querySelector('.shop-check').textContent = '';
-  } else {
-    state.shopChecked.add(label);
-    el.classList.add('checked');
-    el.querySelector('.shop-check').textContent = '✓';
-  }
-}
-
-function copyShoppingList() {
-  const items = buildShoppingItems();
-  if (items.length === 0) { alert('Nothing to copy — all stocked!'); return; }
-
-  const lines = ['🛒 Shopping List — Food Hub', ''];
-  const grouped = {};
-  items.forEach(item => {
-    const section = STORE_SECTIONS.find(s =>
-      s.groups.includes(item.groupName.toLowerCase())
-    ) || STORE_SECTIONS[STORE_SECTIONS.length - 1];
-    if (!grouped[section.label]) grouped[section.label] = [];
-    grouped[section.label].push(item);
-  });
-  STORE_SECTIONS.forEach(section => {
-    const si = grouped[section.label];
-    if (!si) return;
-    lines.push(section.label);
-    si.forEach(item => lines.push(`  • ${item.label}`));
-    lines.push('');
-  });
-
-  navigator.clipboard.writeText(lines.join('\n'))
-    .then(() => {
-      const btn = document.getElementById('btn-copy');
-      btn.textContent = '✓ Copied!';
-      setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
-    })
-    .catch(() => alert('Copy failed — check browser permissions'));
-}
-
-// ═══════════════════════════════════════════════════════════
-// TAB NAVIGATION
-// ═══════════════════════════════════════════════════════════
-let activeTab = 'thisWeek';
-
-function showTab(id) {
-  activeTab = id;
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById(`tab-${id}`).classList.add('active');
-  document.querySelector(`nav button[data-tab="${id}"]`).classList.add('active');
-  // Lazy render
-  if (id === 'checkIn') renderCheckIn();
-  if (id === 'shopping') renderShopping();
-}
-
-// ═══════════════════════════════════════════════════════════
-// STATUS HELPERS
-// ═══════════════════════════════════════════════════════════
-function setStatus(type, msg) {
-  const pill = document.getElementById('status-pill');
-  pill.style.display = 'inline-block';
-  pill.className = type === 'loading' ? 'loading' : type === 'err' ? 'err' : '';
-  pill.textContent = msg;
-}
-function showError(msg) {
-  setStatus('err', '⚠️ Error');
-  console.error(msg);
-}
-
-// ═══════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════
-async function init() {
-  // Tab nav
-  document.querySelectorAll('nav button[data-tab]').forEach(btn => {
-    btn.addEventListener('click', () => showTab(btn.dataset.tab));
-  });
-
-  // Refresh
-  document.getElementById('btn-refresh').addEventListener('click', refresh);
-
-  // Build shopping list button → switch to shopping tab
-  document.getElementById('btn-build-list').addEventListener('click', () => showTab('shopping'));
-
-  // Copy shopping list
-  document.getElementById('btn-copy').addEventListener('click', copyShoppingList);
-
-  // Clear checked
-  document.getElementById('btn-clear-checked').addEventListener('click', () => {
-    state.shopChecked.clear();
-    renderShopping();
-  });
-
-  await refresh();
-}
-
-async function refresh() {
-  try {
-    await loadData();
-    renderThisWeek();
-    if (activeTab === 'checkIn')  renderCheckIn();
-    if (activeTab === 'shopping') renderShopping();
-  } catch (err) {
-    showError(err.message);
-    document.getElementById('btn-refresh').classList.remove('spinning');
-  }
-}
-
-window.updatePortion = updatePortion;
-window.fridgeCheck   = fridgeCheck;
-window.toggleShopItem = toggleShopItem;
-
-document.addEventListener('DOMContentLoaded', init);
+// Boot
+loadSnapshot();
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
