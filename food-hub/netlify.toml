@@ -1,0 +1,18 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+
+# All /api/* calls hit the Grocy proxy function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/grocy"
+  status = 200

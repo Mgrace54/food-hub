@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Food Hub</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green:  #16a34a;
+  --green-l:#dcfce7;
+  --yellow: #d97706;
+  --yellow-l:#fef3c7;
+  --red:    #dc2626;
+  --red-l:  #fee2e2;
+  --blue:   #2563eb;
+  --blue-l: #dbeafe;
+  --gray:   #64748b;
+  --bg:     #f1f5f9;
+  --card:   #ffffff;
+  --border: #e2e8f0;
+  --text:   #0f172a;
+  --sub:    #94a3b8;
+  --radius: 14px;
+  --tab-h:  64px;
+  --head-h: 56px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--head-h);
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+}
+header h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
+header h1 span { color: var(--green); }
+
+#status-pill {
+  font-size: 0.7rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+  background: var(--green-l); color: var(--green);
+  display: none;
+}
+#status-pill.err { background: var(--red-l); color: var(--red); }
+#status-pill.loading { background: #f1f5f9; color: var(--gray); }
+
+#btn-refresh {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.1rem; color: var(--gray);
+  padding: 8px; border-radius: 50%;
+  transition: background 0.15s;
+}
+#btn-refresh:hover { background: var(--bg); }
+#btn-refresh.spinning { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Main scroll area ─────────────────────────────────────── */
+main {
+  padding-top: calc(var(--head-h) + 12px);
+  padding-bottom: calc(var(--tab-h) + 16px);
+  padding-left: 12px; padding-right: 12px;
+  min-height: 100dvh;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Bottom tab bar ───────────────────────────────────────── */
+nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--tab-h);
+  background: #fff;
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  z-index: 100;
+}
+nav button {
+  background: none; border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px;
+  font-size: 0.65rem; font-weight: 600;
+  color: var(--sub);
+  transition: color 0.15s;
+}
+nav button .icon { font-size: 1.4rem; line-height: 1; }
+nav button.active { color: var(--green); }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.section-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--sub);
+  margin: 20px 0 10px;
+}
+
+/* ── Meal grid ────────────────────────────────────────────── */
+.meal-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 14px;
+}
+.meal-card {
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  user-select: none;
+}
+.meal-card.selected {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+}
+.meal-card .meal-emoji { font-size: 1.5rem; line-height: 1; margin-bottom: 6px; }
+.meal-card .meal-name  { font-size: 0.82rem; font-weight: 700; }
+.meal-card .meal-badge {
+  font-size: 0.65rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  display: inline-block; margin-top: 6px;
+}
+.badge-ready  { background: var(--green-l);  color: var(--green); }
+.badge-almost { background: var(--yellow-l); color: var(--yellow); }
+.badge-short  { background: var(--red-l);    color: var(--red); }
+.badge-unknown{ background: #f1f5f9;         color: var(--gray); }
+
+/* ── Ingredient list ──────────────────────────────────────── */
+.ing-list { margin-top: 8px; }
+.ing-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid #f8fafc;
+  font-size: 0.82rem;
+}
+.ing-row:last-child { border-bottom: none; }
+.ing-status { font-size: 0.95rem; flex-shrink: 0; }
+.ing-label  { flex: 1; }
+.ing-amount { font-size: 0.72rem; color: var(--sub); }
+
+/* ── Primary button ───────────────────────────────────────── */
+.btn-primary {
+  display: block; width: 100%;
+  background: var(--green); color: #fff;
+  border: none; border-radius: 10px;
+  padding: 14px; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; text-align: center;
+  transition: opacity 0.15s;
+  margin-bottom: 12px;
+}
+.btn-primary:disabled { opacity: 0.4; cursor: default; }
+.btn-primary:not(:disabled):hover { opacity: 0.9; }
+
+/* ── Portion buttons (What's Left) ───────────────────────── */
+.portion-row {
+  display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+}
+.portion-btn {
+  flex: 1; min-width: 48px;
+  background: #f1f5f9; border: 2px solid transparent;
+  border-radius: 8px; padding: 8px 4px;
+  font-size: 0.72rem; font-weight: 700;
+  cursor: pointer; text-align: center;
+  transition: all 0.15s;
+  color: var(--text);
+}
+.portion-btn:hover { background: var(--green-l); color: var(--green); }
+.portion-btn.active {
+  background: var(--green); color: #fff; border-color: var(--green);
+}
+.portion-btn.gone-active {
+  background: var(--red); color: #fff; border-color: var(--red);
+}
+.batch-item { margin-bottom: 4px; }
+.batch-item .item-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.batch-item .item-name { font-weight: 700; font-size: 0.9rem; }
+.batch-item .item-current {
+  font-size: 0.75rem; color: var(--sub);
+}
+.batch-item .item-untracked {
+  font-size: 0.75rem; color: var(--yellow); margin-top: 4px;
+}
+.save-flash {
+  font-size: 0.72rem; color: var(--green); font-weight: 600;
+  margin-top: 4px; min-height: 18px;
+}
+
+/* ── Fridge check cards ───────────────────────────────────── */
+.fridge-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.fridge-card .fc-name { font-weight: 600; font-size: 0.85rem; flex: 1; }
+.fridge-card .fc-amount { font-size: 0.72rem; color: var(--sub); }
+.fridge-actions { display: flex; gap: 6px; }
+.fc-btn {
+  border: none; border-radius: 8px; padding: 6px 10px;
+  font-size: 0.72rem; font-weight: 700; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.fc-btn:hover { opacity: 0.8; }
+.fc-good { background: var(--green-l); color: var(--green); }
+.fc-low  { background: var(--yellow-l); color: var(--yellow); }
+.fc-gone { background: var(--red-l); color: var(--red); }
+.fc-done { opacity: 0.4; pointer-events: none; }
+
+/* ── Shopping list ────────────────────────────────────────── */
+.shop-section-header {
+  font-size: 0.75rem; font-weight: 700; color: var(--gray);
+  padding: 8px 0 4px; border-bottom: 2px solid var(--border);
+  margin-bottom: 4px;
+}
+.shop-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 4px; border-bottom: 1px solid #f8fafc;
+  cursor: pointer; user-select: none;
+}
+.shop-item.checked .shop-name { text-decoration: line-through; color: var(--sub); }
+.shop-check {
+  width: 20px; height: 20px; flex-shrink: 0;
+  border: 2px solid var(--border); border-radius: 5px;
+  margin-top: 1px; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.shop-item.checked .shop-check {
+  background: var(--green); border-color: var(--green);
+  color: #fff; font-size: 0.8rem;
+}
+.shop-name { font-size: 0.85rem; font-weight: 600; }
+.shop-meals { font-size: 0.7rem; color: var(--sub); }
+.empty-state {
+  text-align: center; padding: 40px 20px;
+  color: var(--sub); font-size: 0.9rem;
+}
+.empty-state .big { font-size: 2rem; margin-bottom: 8px; }
+
+/* ── Utility ──────────────────────────────────────────────── */
+.row-between { display: flex; justify-content: space-between; align-items: center; }
+.text-sm   { font-size: 0.8rem; }
+.text-sub  { color: var(--sub); }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🥘 Food<span>Hub</span></h1>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span id="status-pill"></span>
+    <button id="btn-refresh" title="Refresh">↺</button>
+  </div>
+</header>
+
+<main>
+  <!-- ── TAB: THIS WEEK ──────────────────────────────────── -->
+  <div id="tab-thisWeek" class="tab-content active">
+    <p class="text-sm text-sub" style="margin-bottom:12px;">
+      Tap to pick this week's dinners — shopping list builds from your picks.
+    </p>
+    <div id="meal-grid" class="meal-grid"></div>
+    <button id="btn-build-list" class="btn-primary" disabled>Select meals to build shopping list →</button>
+    <div id="meal-detail"></div>
+  </div>
+
+  <!-- ── TAB: CHECK-IN ──────────────────────────────────── -->
+  <div id="tab-checkIn" class="tab-content">
+    <div class="section-label">🍖 What's Left?</div>
+    <p class="text-sm text-sub" style="margin-bottom:12px;">
+      Update how much of each batch-cooked item remains. Saves directly to Grocy.
+    </p>
+    <div id="batch-cook-list"></div>
+
+    <div class="section-label">🧊 Fridge Check</div>
+    <p class="text-sm text-sub" style="margin-bottom:12px;">
+      Confirm perishables are still good. "Low" removes half; "Gone" zeros it out.
+    </p>
+    <div id="fridge-check-list"></div>
+  </div>
+
+  <!-- ── TAB: SHOPPING LIST ─────────────────────────────── -->
+  <div id="tab-shopping" class="tab-content">
+    <div id="shopping-header" class="row-between" style="margin-bottom:12px;">
+      <span class="text-sm text-sub" id="shop-subtitle">Tap meals on "This Week" to build your list</span>
+      <button id="btn-copy" style="background:none;border:1px solid var(--border);
+        border-radius:8px;padding:6px 12px;font-size:0.75rem;font-weight:600;
+        cursor:pointer;color:var(--gray);">📋 Copy</button>
+    </div>
+    <div id="shop-items"></div>
+    <div style="margin-top:16px;">
+      <button id="btn-clear-checked" style="background:none;border:none;
+        font-size:0.78rem;color:var(--sub);cursor:pointer;text-decoration:underline;">
+        Clear checked items
+      </button>
+    </div>
+  </div>
+</main>
+
+<nav>
+  <button class="active" data-tab="thisWeek">
+    <span class="icon">🍽️</span>This Week
+  </button>
+  <button data-tab="checkIn">
+    <span class="icon">📋</span>Check-In
+  </button>
+  <button data-tab="shopping">
+    <span class="icon">🛒</span>Shopping
+  </button>
+</nav>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG — mirrors meals.py; update both when adding meals
+// ═══════════════════════════════════════════════════════════
+const MEALS = [
+  {
+    id: 'tacos', name: 'Tacos', emoji: '🌮',
+    ingredients: [
+      { label: 'Ground Beef',     hints: ['ground beef','lean ground beef','93 lean ground beef'] },
+      { label: 'Shredded Cheese', hints: ['shredded cheese','shredded mexican cheese','mexican blend cheese','cheddar cheese'] },
+      { label: 'Corn Tortillas',  hints: ['corn tortilla','white corn tortilla','mission corn tortilla','guerrero corn tortilla'] },
+    ],
+  },
+  {
+    id: 'enchiladas', name: 'Enchiladas', emoji: '🫔',
+    ingredients: [
+      { label: 'Beef or Chicken', hints: ['ground beef','lean ground beef','chicken breast','chicken thighs','boneless chicken breast'] },
+      { label: 'Corn Tortillas',  hints: ['corn tortilla','white corn tortilla','mission corn tortilla'] },
+      { label: 'Enchilada Sauce', hints: ['enchilada sauce','old el paso enchilada sauce','red enchilada sauce'] },
+      { label: 'Shredded Cheese', hints: ['shredded cheese','shredded mexican cheese','mexican blend cheese','cheddar cheese'] },
+    ],
+  },
+  {
+    id: 'stroganoff', name: 'Stroganoff', emoji: '🍝',
+    ingredients: [
+      { label: 'Ground Beef',    hints: ['ground beef','lean ground beef','85 lean ground beef'] },
+      { label: 'GF Stroganoff', hints: ['gluten free stroganoff','gf stroganoff','hamburger helper stroganoff','stroganoff mix','stroganoff'] },
+      { label: 'Milk',          hints: ['whole milk','milk','2% milk','organic whole milk','vitamin d milk','a2 milk','fairlife milk'] },
+    ],
+  },
+  {
+    id: 'blt', name: 'BLT', emoji: '🥪',
+    ingredients: [
+      { label: 'Bacon',   hints: ['bacon','thick cut bacon','kirkland signature bacon','applegate bacon','uncured bacon'] },
+      { label: 'Lettuce', hints: ['romaine lettuce','iceberg lettuce','lettuce','butter lettuce','hearts of romaine'] },
+      { label: 'Tomato',  hints: ['tomato','roma tomato','beefsteak tomato','vine ripened tomato'] },
+      { label: 'Mayo',    hints: ['mayonnaise','mayo','hellmanns mayonnaise','best foods mayo','avocado oil mayo'] },
+      { label: 'Bread',   hints: ['bread','white bread','sandwich bread','organic bread','gluten free bread','sourdough bread'] },
+    ],
+  },
+  {
+    id: 'nuggets', name: 'Nuggets / Tenders', emoji: '🍗',
+    ingredients: [
+      { label: 'Chicken Nuggets or Tenders', hints: ['chicken nugget','chicken tender','chicken tenders','tyson chicken','kirkland chicken strip','dinosaur nugget','dino nugget'] },
+    ],
+  },
+  {
+    id: 'hamburgers', name: 'Hamburgers', emoji: '🍔',
+    ingredients: [
+      { label: 'Angus Patties',     hints: ['angus beef patty','angus patty','hamburger patty','beef burger patty','kirkland angus','great value angus','frozen burger patty'] },
+      { label: 'Burger Condiment',  hints: ['burger sauce','special sauce','ketchup','mustard','thousand island dressing'] },
+      { label: 'Pickles',           hints: ['pickle','dill pickle','sliced pickle','vlasic pickle','bread and butter pickle'] },
+      { label: 'Cheese',            hints: ['american cheese','cheddar cheese','sliced cheese','kraft singles'] },
+    ],
+  },
+];
+
+// Large cooked batch items — each needs a matching product in Grocy.
+// Run: python main.py seed-batch-cook  (to create these products in Grocy)
+const BATCH_COOK = [
+  {
+    id: 'chuck',    name: 'Smoked Chuck Roast',    emoji: '🥩',
+    hints: ['smoked chuck roast','chuck roast cooked','pulled beef','shredded beef'],
+    fullBatch: 8,  unit: 'servings',
+  },
+  {
+    id: 'thighs',  name: 'Cooked Chicken Thighs',  emoji: '🍗',
+    hints: ['cooked chicken thigh','chicken thighs cooked','baked chicken thigh','chicken thigh cooked'],
+    fullBatch: 8,  unit: 'thighs',
+  },
+  {
+    id: 'bacon_c', name: 'Cooked Bacon',            emoji: '🥓',
+    hints: ['cooked bacon','bacon cooked','bacon strips cooked'],
+    fullBatch: 12, unit: 'strips',
+  },
+];
+
+// Store sections for shopping list grouping
+const STORE_SECTIONS = [
+  { label: '🥩 Meat & Seafood',  groups: ['meat','seafood'] },
+  { label: '🥬 Produce',         groups: ['produce'] },
+  { label: '🧀 Dairy',           groups: ['dairy','beverages'] },
+  { label: '🧊 Frozen',          groups: ['frozen'] },
+  { label: '🥫 Pantry',          groups: ['pantry','snacks','bakery','grains','candy','prepared foods'] },
+  { label: '🧴 Personal & Home', groups: ['personal care','cleaning','other','house supplies','baby supplies'] },
+  { label: '❓ Other',           groups: [] },
+];
+
+// Perishable product group names (for fridge check filtering)
+const PERISHABLE_GROUPS = new Set(['dairy','produce','meat','seafood','bakery','prepared foods']);
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+  products: {},       // id → product
+  productGroups: {},  // id → name
+  locations: {},      // id → name
+  stock: {},          // product_id → float amount
+  selectedMeals: new Set(),
+  shopChecked: new Set(),
+};
+
+// ═══════════════════════════════════════════════════════════
+// API HELPER
+// ═══════════════════════════════════════════════════════════
+async function api(path, method = 'GET', body = null) {
+  const url = `/api/grocy?path=${encodeURIComponent(path)}`;
+  const opts = { method };
+  if (body !== null && method !== 'GET') {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(`Grocy ${r.status}: ${txt}`);
+  }
+  const txt = await r.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════════════════════════════
+async function loadData() {
+  setStatus('loading', 'Loading…');
+  document.getElementById('btn-refresh').classList.add('spinning');
+
+  const [products, groups, locations, stock] = await Promise.all([
+    api('/objects/products'),
+    api('/objects/product_groups'),
+    api('/objects/locations'),
+    api('/stock'),
+  ]);
+
+  state.products = Object.fromEntries((products || []).map(p => [p.id, p]));
+  state.productGroups = Object.fromEntries((groups || []).map(g => [g.id, g.name.toLowerCase()]));
+  state.locations = Object.fromEntries((locations || []).map(l => [l.id, l.name]));
+  state.stock = Object.fromEntries((stock || []).map(s => [s.product_id, parseFloat(s.amount || 0)]));
+
+  document.getElementById('btn-refresh').classList.remove('spinning');
+  setStatus('ok', `Updated ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRODUCT MATCHING  (JS version of matcher.py resolve())
+// ═══════════════════════════════════════════════════════════
+function findByHints(hints) {
+  // Pass 1: stocked product matching any hint
+  for (const hint of hints) {
+    const h = hint.toLowerCase();
+    for (const p of Object.values(state.products)) {
+      if (nameMatches(p.name, h) && (state.stock[p.id] || 0) > 0) {
+        return { product: p, amount: state.stock[p.id], status: 'stocked' };
+      }
+    }
+  }
+  // Pass 2: product exists but out of stock
+  for (const hint of hints) {
+    const h = hint.toLowerCase();
+    for (const p of Object.values(state.products)) {
+      if (nameMatches(p.name, h)) {
+        return { product: p, amount: 0, status: 'zero_stock' };
+      }
+    }
+  }
+  return { product: null, amount: 0, status: 'not_tracked' };
+}
+
+function nameMatches(productName, hint) {
+  const p = productName.toLowerCase();
+  if (p.includes(hint)) return true;
+  if (hint.includes(p) && p.length >= 4) return true;
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEAL ANALYSIS
+// ═══════════════════════════════════════════════════════════
+function analyzeMeal(meal) {
+  const ingredients = meal.ingredients.map(ing => {
+    const r = findByHints(ing.hints);
+    return { ...ing, ...r };
+  });
+  const missing = ingredients.filter(i => i.status !== 'stocked');
+  const mealStatus = missing.length === 0 ? 'ready' : missing.length === 1 ? 'almost' : 'short';
+  return { ...meal, ingredients, missing, mealStatus };
+}
+
+function analyzedMeals() {
+  return MEALS.map(analyzeMeal);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: THIS WEEK TAB
+// ═══════════════════════════════════════════════════════════
+function renderThisWeek() {
+  const meals = analyzedMeals();
+  const grid = document.getElementById('meal-grid');
+  grid.innerHTML = '';
+
+  meals.forEach(meal => {
+    const isSelected = state.selectedMeals.has(meal.id);
+    const badgeClass = { ready: 'badge-ready', almost: 'badge-almost', short: 'badge-short' }[meal.mealStatus] || 'badge-unknown';
+    const badgeText  = { ready: '✅ Ready', almost: '⚠️ 1 short', short: `❌ ${meal.missing.length} missing` }[meal.mealStatus] || '?';
+
+    const card = document.createElement('div');
+    card.className = `meal-card ${isSelected ? 'selected' : ''}`;
+    card.dataset.id = meal.id;
+    card.innerHTML = `
+      <div class="meal-emoji">${meal.emoji}</div>
+      <div class="meal-name">${meal.name}</div>
+      <span class="meal-badge ${badgeClass}">${badgeText}</span>
+    `;
+    card.addEventListener('click', () => toggleMeal(meal.id));
+    grid.appendChild(card);
+  });
+
+  updateBuildButton();
+  renderMealDetail(meals);
+}
+
+function toggleMeal(id) {
+  if (state.selectedMeals.has(id)) {
+    state.selectedMeals.delete(id);
+  } else {
+    state.selectedMeals.add(id);
+  }
+  renderThisWeek();
+  renderShopping();
+}
+
+function updateBuildButton() {
+  const btn = document.getElementById('btn-build-list');
+  const n = state.selectedMeals.size;
+  if (n === 0) {
+    btn.textContent = 'Select meals to build shopping list →';
+    btn.disabled = true;
+  } else {
+    btn.textContent = `Build shopping list for ${n} meal${n > 1 ? 's' : ''} →`;
+    btn.disabled = false;
+  }
+}
+
+function renderMealDetail(meals) {
+  const container = document.getElementById('meal-detail');
+  if (state.selectedMeals.size === 0) { container.innerHTML = ''; return; }
+
+  let html = '';
+  meals.filter(m => state.selectedMeals.has(m.id)).forEach(meal => {
+    const rows = meal.ingredients.map(ing => {
+      const icon   = ing.status === 'stocked' ? '✅' : ing.status === 'zero_stock' ? '❌' : '❓';
+      const color  = ing.status === 'stocked' ? 'var(--green)' : ing.status === 'zero_stock' ? 'var(--red)' : 'var(--sub)';
+      const detail = ing.status === 'stocked' ? `${ing.amount} in stock` : ing.status === 'zero_stock' ? 'Out of stock' : 'Not in Grocy';
+      return `<div class="ing-row">
+        <span class="ing-status">${icon}</span>
+        <span class="ing-label" style="color:${color}">${ing.label}</span>
+        <span class="ing-amount">${detail}</span>
+      </div>`;
+    }).join('');
+    html += `<div class="card"><div class="row-between" style="margin-bottom:8px;">
+      <strong>${meal.emoji} ${meal.name}</strong>
+    </div><div class="ing-list">${rows}</div></div>`;
+  });
+  container.innerHTML = `<div class="section-label">Selected meals</div>${html}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: CHECK-IN TAB
+// ═══════════════════════════════════════════════════════════
+function renderCheckIn() {
+  renderBatchCook();
+  renderFridgeCheck();
+}
+
+function renderBatchCook() {
+  const container = document.getElementById('batch-cook-list');
+  container.innerHTML = '';
+
+  BATCH_COOK.forEach(item => {
+    const { product, amount, status } = findByHints(item.hints);
+    const card = document.createElement('div');
+    card.className = 'card batch-item';
+
+    const currentFrac = status === 'stocked' ? (amount / item.fullBatch) : 0;
+    const activePortion = portionIndex(currentFrac);
+
+    const portions = [
+      { label: 'Full',   frac: 1.0 },
+      { label: '¾',      frac: 0.75 },
+      { label: '½',      frac: 0.5 },
+      { label: '¼',      frac: 0.25 },
+      { label: 'Gone',   frac: 0 },
+    ];
+
+    const headerHtml = `<div class="item-header">
+      <span class="item-name">${item.emoji} ${item.name}</span>
+      <span class="item-current">${status === 'not_tracked' ? 'not tracked' : `${amount} ${item.unit}`}</span>
+    </div>`;
+
+    if (status === 'not_tracked') {
+      card.innerHTML = `${headerHtml}
+        <div class="item-untracked">⚠️ No matching product in Grocy — run <code>python main.py seed-batch-cook</code></div>`;
+    } else {
+      const btnHtml = portions.map((p, i) => {
+        const isActive = i === activePortion;
+        const cls = isActive ? (p.frac === 0 ? 'gone-active' : 'active') : '';
+        return `<button class="portion-btn ${cls}"
+          data-pid="${product.id}" data-qty="${Math.round(p.frac * item.fullBatch)}"
+          data-full="${item.fullBatch}" data-unit="${item.unit}"
+          onclick="updatePortion(this)">${p.label}</button>`;
+      }).join('');
+      card.innerHTML = `${headerHtml}
+        <div class="portion-row">${btnHtml}</div>
+        <div class="save-flash" id="flash-${item.id}"></div>`;
+    }
+    container.appendChild(card);
+  });
+}
+
+function portionIndex(frac) {
+  if (frac >= 0.9) return 0;
+  if (frac >= 0.6) return 1;
+  if (frac >= 0.35) return 2;
+  if (frac > 0) return 3;
+  return 4;
+}
+
+async function updatePortion(btn) {
+  const pid  = btn.dataset.pid;
+  const qty  = parseInt(btn.dataset.qty, 10);
+  const unit = btn.dataset.unit;
+
+  // Optimistic UI — highlight the tapped button
+  const row = btn.closest('.portion-row');
+  row.querySelectorAll('.portion-btn').forEach(b => {
+    b.classList.remove('active','gone-active');
+  });
+  btn.classList.add(qty === 0 ? 'gone-active' : 'active');
+
+  try {
+    await api(`/stock/products/${pid}/inventory`, 'POST', {
+      new_amount: qty,
+      best_before_date: '2999-12-31',
+    });
+    state.stock[pid] = qty;
+    // Flash confirmation
+    const flash = btn.closest('.batch-item').querySelector('.save-flash');
+    if (flash) {
+      flash.textContent = qty === 0 ? 'Marked as gone ✓' : `Updated to ${qty} ${unit} ✓`;
+      setTimeout(() => { flash.textContent = ''; }, 2500);
+    }
+  } catch (err) {
+    showError('Save failed: ' + err.message);
+  }
+}
+
+function renderFridgeCheck() {
+  const container = document.getElementById('fridge-check-list');
+  container.innerHTML = '';
+
+  // Find "Inside Fridge" location id
+  const fridgeId = Object.entries(state.locations)
+    .find(([, name]) => name.toLowerCase().includes('inside fridge'))?.[0];
+
+  if (!fridgeId) {
+    container.innerHTML = '<p class="text-sm text-sub">Could not find "Inside Fridge" location in Grocy.</p>';
+    return;
+  }
+
+  // Products at Inside Fridge, with stock > 0, in a perishable group
+  const perishables = Object.values(state.products).filter(p => {
+    if (String(p.location_id) !== String(fridgeId)) return false;
+    if ((state.stock[p.id] || 0) <= 0) return false;
+    const groupName = state.productGroups[p.product_group_id] || '';
+    return PERISHABLE_GROUPS.has(groupName.toLowerCase());
+  });
+
+  if (perishables.length === 0) {
+    container.innerHTML = '<p class="text-sm text-sub">No perishables currently tracked in the Inside Fridge.</p>';
+    return;
+  }
+
+  perishables.forEach(p => {
+    const amount = state.stock[p.id] || 0;
+    const card = document.createElement('div');
+    card.className = 'fridge-card';
+    card.id = `fc-${p.id}`;
+    card.innerHTML = `
+      <div style="flex:1;">
+        <div class="fc-name">${p.name}</div>
+        <div class="fc-amount">${amount} in stock</div>
+      </div>
+      <div class="fridge-actions">
+        <button class="fc-btn fc-good" onclick="fridgeCheck(${p.id}, 'good', this)">✓ Good</button>
+        <button class="fc-btn fc-low"  onclick="fridgeCheck(${p.id}, 'low',  this)">Low</button>
+        <button class="fc-btn fc-gone" onclick="fridgeCheck(${p.id}, 'gone', this)">Gone</button>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+async function fridgeCheck(pid, verdict, btn) {
+  const card = btn.closest('.fridge-card');
+  const amount = state.stock[pid] || 0;
+
+  try {
+    if (verdict === 'good') {
+      // No Grocy write — just dismiss
+    } else if (verdict === 'low') {
+      const newAmt = Math.max(0, Math.floor(amount * 0.5));
+      await api(`/stock/products/${pid}/inventory`, 'POST', {
+        new_amount: newAmt, best_before_date: '2999-12-31',
+      });
+      state.stock[pid] = newAmt;
+    } else if (verdict === 'gone') {
+      await api(`/stock/products/${pid}/inventory`, 'POST', {
+        new_amount: 0, best_before_date: '2999-12-31',
+      });
+      state.stock[pid] = 0;
+    }
+    card.classList.add('fc-done');
+    card.style.opacity = '0.4';
+    card.querySelectorAll('.fc-btn').forEach(b => b.disabled = true);
+  } catch (err) {
+    showError('Update failed: ' + err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER: SHOPPING LIST TAB
+// ═══════════════════════════════════════════════════════════
+function buildShoppingItems() {
+  const meals = analyzedMeals();
+  const activeMeals = state.selectedMeals.size > 0
+    ? meals.filter(m => state.selectedMeals.has(m.id))
+    : meals;
+
+  const seen = {};
+  activeMeals.forEach(meal => {
+    meal.ingredients.forEach(ing => {
+      if (ing.status === 'stocked') return;
+      if (!seen[ing.label]) {
+        // Find product group for store-section sorting
+        const product = ing.product;
+        const groupName = product ? (state.productGroups[product.product_group_id] || '') : '';
+        seen[ing.label] = {
+          label: ing.label,
+          status: ing.status,
+          groupName,
+          meals: [],
+        };
+      }
+      if (!seen[ing.label].meals.includes(meal.name)) {
+        seen[ing.label].meals.push(meal.name);
+      }
+    });
+  });
+  return Object.values(seen);
+}
+
+function renderShopping() {
+  const items = buildShoppingItems();
+  const container = document.getElementById('shop-items');
+  const subtitle = document.getElementById('shop-subtitle');
+
+  if (state.selectedMeals.size === 0) {
+    subtitle.textContent = items.length === 0
+      ? 'All meals fully stocked 🎉'
+      : `Showing all ${items.length} missing item${items.length > 1 ? 's' : ''} across every dinner`;
+  } else {
+    const names = [...state.selectedMeals].map(id => MEALS.find(m => m.id === id)?.name).join(', ');
+    subtitle.textContent = `For: ${names}`;
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="big">🎉</div>All stocked up!</div>`;
+    return;
+  }
+
+  // Group by store section
+  const grouped = {};
+  items.forEach(item => {
+    const section = STORE_SECTIONS.find(s =>
+      s.groups.includes(item.groupName.toLowerCase())
+    ) || STORE_SECTIONS[STORE_SECTIONS.length - 1];
+    if (!grouped[section.label]) grouped[section.label] = [];
+    grouped[section.label].push(item);
+  });
+
+  let html = '';
+  // Render in section order
+  STORE_SECTIONS.forEach(section => {
+    const sectionItems = grouped[section.label];
+    if (!sectionItems) return;
+    html += `<div class="shop-section-header">${section.label}</div>`;
+    sectionItems.forEach(item => {
+      const checked = state.shopChecked.has(item.label);
+      const statusNote = item.status === 'zero_stock' ? 'restock' : 'add to Grocy';
+      html += `<div class="shop-item ${checked ? 'checked' : ''}" onclick="toggleShopItem('${item.label.replace(/'/g,"\\'")}', this)">
+        <div class="shop-check">${checked ? '✓' : ''}</div>
+        <div>
+          <div class="shop-name">${item.label}</div>
+          <div class="shop-meals">${item.meals.join(', ')} · <em>${statusNote}</em></div>
+        </div>
+      </div>`;
+    });
+  });
+  container.innerHTML = html;
+}
+
+function toggleShopItem(label, el) {
+  if (state.shopChecked.has(label)) {
+    state.shopChecked.delete(label);
+    el.classList.remove('checked');
+    el.querySelector('.shop-check').textContent = '';
+  } else {
+    state.shopChecked.add(label);
+    el.classList.add('checked');
+    el.querySelector('.shop-check').textContent = '✓';
+  }
+}
+
+function copyShoppingList() {
+  const items = buildShoppingItems();
+  if (items.length === 0) { alert('Nothing to copy — all stocked!'); return; }
+
+  const lines = ['🛒 Shopping List — Food Hub', ''];
+  const grouped = {};
+  items.forEach(item => {
+    const section = STORE_SECTIONS.find(s =>
+      s.groups.includes(item.groupName.toLowerCase())
+    ) || STORE_SECTIONS[STORE_SECTIONS.length - 1];
+    if (!grouped[section.label]) grouped[section.label] = [];
+    grouped[section.label].push(item);
+  });
+  STORE_SECTIONS.forEach(section => {
+    const si = grouped[section.label];
+    if (!si) return;
+    lines.push(section.label);
+    si.forEach(item => lines.push(`  • ${item.label}`));
+    lines.push('');
+  });
+
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+    })
+    .catch(() => alert('Copy failed — check browser permissions'));
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════
+let activeTab = 'thisWeek';
+
+function showTab(id) {
+  activeTab = id;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+  document.querySelector(`nav button[data-tab="${id}"]`).classList.add('active');
+  // Lazy render
+  if (id === 'checkIn') renderCheckIn();
+  if (id === 'shopping') renderShopping();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATUS HELPERS
+// ═══════════════════════════════════════════════════════════
+function setStatus(type, msg) {
+  const pill = document.getElementById('status-pill');
+  pill.style.display = 'inline-block';
+  pill.className = type === 'loading' ? 'loading' : type === 'err' ? 'err' : '';
+  pill.textContent = msg;
+}
+function showError(msg) {
+  setStatus('err', '⚠️ Error');
+  console.error(msg);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  // Tab nav
+  document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+  });
+
+  // Refresh
+  document.getElementById('btn-refresh').addEventListener('click', refresh);
+
+  // Build shopping list button → switch to shopping tab
+  document.getElementById('btn-build-list').addEventListener('click', () => showTab('shopping'));
+
+  // Copy shopping list
+  document.getElementById('btn-copy').addEventListener('click', copyShoppingList);
+
+  // Clear checked
+  document.getElementById('btn-clear-checked').addEventListener('click', () => {
+    state.shopChecked.clear();
+    renderShopping();
+  });
+
+  await refresh();
+}
+
+async function refresh() {
+  try {
+    await loadData();
+    renderThisWeek();
+    if (activeTab === 'checkIn')  renderCheckIn();
+    if (activeTab === 'shopping') renderShopping();
+  } catch (err) {
+    showError(err.message);
+    document.getElementById('btn-refresh').classList.remove('spinning');
+  }
+}
+
+window.updatePortion = updatePortion;
+window.fridgeCheck   = fridgeCheck;
+window.toggleShopItem = toggleShopItem;
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
